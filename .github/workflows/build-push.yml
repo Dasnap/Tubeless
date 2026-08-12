@@ -38,7 +38,7 @@ jobs:
           file: ./docker/selfhosted.Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/dasnap/tubeless:latest
+          tags: ghcr.io/${{ github.repository }}:latest
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
