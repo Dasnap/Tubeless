@@ -36,9 +36,6 @@ ARG FFMPEG_BUILD=N-125858-g86940d45af
 
 ARG DEV_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 
-# Extract Deno from official multi-architecture image
-FROM denoland/deno:${DENO_VERSION} as deno_stage
-
 FROM ${DEV_IMAGE}
 
 # Re-declare ARGs needed inside the build stage. ARGs declared before FROM
@@ -79,20 +76,18 @@ RUN npm install -g yarn
   # Install baseline Elixir packages
 RUN mix local.hex --force && \
     mix local.rebar --force
-
-# Copy Deno binary from official multi-architecture image
-COPY --from=deno_stage /deno /usr/local/bin/deno
-
-  # Install yt-dlp and Apprise
-RUN # Download yt-dlp (pinned to latest at base image build time)
+  # Install Deno - required for YouTube downloads (See yt-dlp#14404)
+RUN curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh -s -- ${DENO_VERSION} -y --no-modify-path && \
+  # Download yt-dlp (pinned to latest at base image build time)
   export YT_DLP_DOWNLOAD=$(case ${TARGETPLATFORM:-linux/amd64} in \
   "linux/amd64")   echo "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux"   ;; \
   "linux/arm64")   echo "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64" ;; \
   *)               echo "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux"        ;; esac) && \
   curl -L ${YT_DLP_DOWNLOAD} -o /usr/local/bin/yt-dlp && \
-  chmod a+rx /usr/local/bin/yt-dlp && \
+  chmod a+rx /usr/local/bin/yt-dlp
+
   # Install Apprise (version pinned in docker/ci-base.requirements.txt, managed by Renovate)
-  export PIPX_HOME=/opt/pipx && \
+RUN export PIPX_HOME=/opt/pipx && \
   export PIPX_BIN_DIR=/usr/local/bin && \
   pipx install "$(cat /tmp/ci-base.requirements.txt)" && \
   rm /tmp/ci-base.requirements.txt
